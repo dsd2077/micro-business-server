@@ -1,9 +1,9 @@
 #ifndef __WD_TCPSERVER_H__
 #define __WD_TCPSERVER_H__
 
-#include "Acceptor.hpp"
-#include "EventLoop.hpp"
-#include "TcpConnection.hpp"
+#include "./tcp/Acceptor.hpp"
+#include "./event_loop/EventLoop.hpp"
+#include "./tcp/TcpConnection.hpp"
 
 namespace wd
 {
@@ -11,9 +11,9 @@ namespace wd
 class TcpServer
 {
 public:
-	TcpServer(const string & ip, unsigned short port)
+	TcpServer(const string & ip, unsigned short port, size_t threadNum=8, size_t queSize=1024)
 	: _acceptor(ip, port)
-	, _loop(_acceptor)
+	, _loop(_acceptor, threadNum, queSize)
 	{}
 
 	void start()
@@ -27,14 +27,7 @@ public:
 		_loop.unloop();
 	}
 
-	void setAllCallbacks(TcpConnectionCallback && onConnection,
-			TcpConnectionCallback && onMessage,
-			TcpConnectionCallback && onClose)
-	{
-		_loop.setConnectionCallback(std::move(onConnection));
-		_loop.setMessageCallback(std::move(onMessage));
-		_loop.setCloseCallback(std::move(onClose));
-	}
+private:
 
 private:
 	Acceptor _acceptor;
@@ -42,6 +35,5 @@ private:
 };
 
 }//end of namespace wd
-
 
 #endif

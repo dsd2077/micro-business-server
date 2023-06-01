@@ -18,13 +18,6 @@ TcpConnection::TcpConnection(int fd)
 {
 }
 
-string TcpConnection::receive()
-{
-	char buff[65535] = {0};
-	_sockIO.readline(buff, sizeof(buff));
-	return string(buff);
-}
-
 void TcpConnection::send(const string & msg)
 {
 	_sockIO.writen(msg.c_str(), msg.size());
@@ -39,6 +32,18 @@ string TcpConnection::toString() const
 	return oss.str();
 }
 
+void TcpConnection::process()
+{
+	//读取消息
+	_sockIO.readn(_read_buf, sizeof(_read_buf));
+	cout << "read message : \n" << _read_buf << endl;
+	//解析消息
+	//通过http状态机
+
+	//根据商品的类别信息转发消息
+
+}
+
 bool TcpConnection::isClosed() const
 {
 	int nret = -1;
@@ -48,42 +53,6 @@ bool TcpConnection::isClosed() const
 	}while(nret == -1 && errno == EINTR);
 
 	return nret == 0;
-}
-
-void TcpConnection::setConnectionCallback(const TcpConnectionCallback & cb)
-{
-	_onConnectionCb = std::move(cb);
-}
-
-void TcpConnection::setMessageCallback(const TcpConnectionCallback & cb)
-{
-	_onMessageCb = std::move(cb);
-}
-
-void TcpConnection::setCloseCallback(const TcpConnectionCallback & cb)
-{
-	_onCloseCb = std::move(cb);
-}
-
-void TcpConnection::handleConnectionCallback()
-{
-	if(_onConnectionCb) {
-		_onConnectionCb(shared_from_this());
-	}
-}
-
-void TcpConnection::handleMessageCallback()
-{
-	if(_onMessageCb) {
-		_onMessageCb(shared_from_this());
-	}
-}
-
-void TcpConnection::handleCloseCallback()
-{
-	if(_onCloseCb) {
-		_onCloseCb(shared_from_this());
-	}
 }
 
 InetAddress TcpConnection::getLocalAddr()

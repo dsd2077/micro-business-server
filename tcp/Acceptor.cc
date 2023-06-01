@@ -12,6 +12,7 @@ Acceptor::Acceptor(const string & ip, unsigned short port)
 
 void Acceptor::ready()
 {
+	//TODO:没有设置边缘触发也没有设置非阻塞
 	setReuseAddr();
 	setReusePort();
 	bind();

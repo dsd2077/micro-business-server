@@ -7,7 +7,8 @@
 
 namespace wd
 {
-
+//TODO:这样的封装真的有意义吗？
+//现在来看，确实没什么意义，从代码的复用性来讲
 class Acceptor
 {
 public:

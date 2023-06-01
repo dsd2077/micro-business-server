@@ -8,17 +8,14 @@ using std::function;
 
 namespace wd
 {
-
 class Thread
 {
 public:
 	using ThreadCallback = function<void()>;
-
-	//使用右值引用是为了减少复制的开销
-	Thread(ThreadCallback && cb)
+	Thread(ThreadCallback cb)
 	: _pthid(0)
 	, _isRunning(false)
-	, _cb(std::move(cb))  //注册回调函数
+	, _cb(cb)  //注册回调函数
 	{}
 
 	~Thread();

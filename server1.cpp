@@ -17,21 +17,6 @@ void callSighandler(int sig) {
     sighandler(sig);
 }
 
-//商品类
-struct Goods{
-    Goods(const std::string n, int p, int number)
-    :name(n), price(p), num(number){}
-
-    void display() {
-        std::cout << name << "   " << price << "   " << num << std::endl;
-    }
-    std::string name;
-    int price;
-    int num;
-
-
-};
-
 class Server_Function
 {
 public:
@@ -92,12 +77,6 @@ public:
         signal(SIGINT,callSighandler);   //注册SIGINT对应的处理函数
         _acceptor.ready();
         addEpollReadFd(_acceptor.fd());
-        // connectToAnotherBusinessServer();
-
-        //添加出售商品，以后可以考虑从数据库或者文件中读取
-        // m_pObserver->_items.push_back(Goods("mask", 200, 50));
-        // m_pObserver->_items.push_back({"water", 2000, 5});
-        // m_pObserver->_items.push_back({"lipstick", 500, 50});
 
         waitEpollfd();
 

@@ -12,24 +12,25 @@ using std::endl;
 namespace wd
 {
 
+//循环读取,直到缓冲区为空
 int SocketIO::readn(char * buff, int len)
 {
-	int left = len;//还剩下left个字节数没有获取到
-	char * p = buff;
+	int left = len; // 还剩下left个字节数没有获取到
+	char *p = buff;
 
 	int ret = -1;
-	while(left > 0) {
+	while (left > 0)
+	{
 		/* ret = recv(_fd, p, left, 0); */
 		ret = read(_fd, p, left);
-		if(ret == -1 && errno == EINTR)
-			continue;
-		else if(ret == -1) {
-			perror("read");
-			return len - left;
-		} else if(ret == 0){
-			break;
+		if (ret == -1) 
+		{
+			if (errno == EINTR) continue;		// The call was interrupted by a signal before any data was read
+			else if (errno == EAGAIN || errno == EWOULDBLOCK) break;
 		}
-		else {
+		else if (ret == 0) break;						//(zero indicates end of file)对端已关闭连接
+		else
+		{
 			p += ret;
 			left -= ret;
 		}
@@ -77,7 +78,6 @@ int SocketIO::readline(char * buff, int maxlen)
 			break;
 		} else {
 			//ret > 0
-			
 			for(int idx = 0; idx < ret; ++idx) {
 				//2. 找到了 \n
 				if(p[idx] == '\n') {
