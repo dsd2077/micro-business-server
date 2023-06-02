@@ -14,6 +14,10 @@ using std::string;
 
 namespace wd
 {
+enum CONNECTION_TYPE {
+	CLIENT,
+	SERVER,
+};
 
 class TcpConnection 
 : Noncopyable
@@ -22,13 +26,13 @@ class TcpConnection
 	static const int READ_BUFFER_SIZE = 2048;	
 
 public:
-	TcpConnection(int fd);
+	TcpConnection(int fd, CONNECTION_TYPE type);
 
 	string receive();
 	void send(const string & msg);
 	bool isClosed() const;
 	string toString() const;
-	void process();		//
+	void process();		
 
 private:
 	InetAddress getLocalAddr();
@@ -41,6 +45,7 @@ private:
 	InetAddress _peerAddr;      //对端的地址
 	bool _isShutdownWrite;      //是否写关闭
 	char _read_buf[READ_BUFFER_SIZE];
+	CONNECTION_TYPE _type;
 };
 }//end of namespace wd
 

@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "../threadpool/Threadpool.hpp"
+#include "../config.h"
 
 namespace wd
 {
@@ -23,7 +24,7 @@ class EventLoop
 public:
     //1 创建一个epoll句柄
     //2 将listenfd添加入监听事件
-	EventLoop(Acceptor &, size_t threadNum = 8, size_t queSize=1024);
+	EventLoop(Acceptor &,const char * config_file, size_t threadNum = 8, size_t queSize=1024);
 	~EventLoop();
 
     //调用waitEpollfd去开启epoll监听
@@ -31,14 +32,11 @@ public:
 	void unloop();		
 
 private:
-
-    //调用epoll_wait开启监听
-    //等待epoll返回
-    //1 listenfd可读
-    //2 客户端可读
 	void waitEpollfd();
 	void handleNewConnection();
 	void handleMessage(int);
+	bool connectToBusinessServer();
+	int connectToOneBusinessServer(const char * ip, int port);
 
 	int createEpollfd();
 	void addEpollReadFd(int fd);
@@ -50,8 +48,12 @@ private:
 	Acceptor &  _acceptor;
 	bool        _isLooping;
 	EventList   _evtList;   //
-	TcpConnsMap _conns;     //Tcp连接
+	TcpConnsMap _clientConns;     //客户Tcp连接
+	TcpConnsMap _serverConns;	  //业务服务器Tcp连接
+	std::map<int, int> _belongs;	//不同的服务器所处理的商品类别。
     Threadpool _threadpool;
+	Parser _config;
+	std::map<std::string, std::vector<int>> _forwardingTable;		//转发表<业务编号，[服务器fd]>
 };
 
 }//end of namespace wd

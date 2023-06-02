@@ -8,12 +8,12 @@
 namespace wd
 {
 
-class TcpServer
+class ProxyServer
 {
 public:
-	TcpServer(const string & ip, unsigned short port, size_t threadNum=8, size_t queSize=1024)
+	ProxyServer(const string & ip,const char * config_file, unsigned short port, size_t threadNum=8, size_t queSize=1024)
 	: _acceptor(ip, port)
-	, _loop(_acceptor, threadNum, queSize)
+	, _loop(_acceptor,config_file, threadNum, queSize)
 	{}
 
 	void start()
