@@ -9,11 +9,21 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <map>
+#include <vector>
 
 using std::string;
+using std::map;
+using std::vector;
+
 
 namespace wd
 {
+enum HTTP_CODE {
+	BAD_REQUEST,
+	GET_REQUEST,
+};
+
 enum CONNECTION_TYPE {
 	CLIENT,
 	SERVER,
@@ -23,16 +33,24 @@ class TcpConnection
 : Noncopyable
 , public std::enable_shared_from_this<TcpConnection>
 {
+	using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
+	using TcpConnsMap = map<int, TcpConnectionPtr>;
 	static const int READ_BUFFER_SIZE = 2048;	
 
 public:
-	TcpConnection(int fd, CONNECTION_TYPE type);
+	TcpConnection(int fd, CONNECTION_TYPE type,
+				map<string,vector<int>> &forwardingTable, TcpConnsMap &serverConns,
+				map<string, int> &clientTable, TcpConnsMap &clientConns);
 
 	string receive();
 	void send(const string & msg);
 	bool isClosed() const;
 	string toString() const;
 	void process();		
+	void do_server2client();
+	void do_client2server();
+	HTTP_CODE parse_request_line(string line);
+
 
 private:
 	InetAddress getLocalAddr();
@@ -46,6 +64,11 @@ private:
 	bool _isShutdownWrite;      //是否写关闭
 	char _read_buf[READ_BUFFER_SIZE];
 	CONNECTION_TYPE _type;
+	map<string, vector<int>> &_forwardingTable;		//client2server转发表 <业务编号，[服务器fd]>
+	map<string, int> &_clientTable;						//server2client转发表 <ip:port, fd>
+	TcpConnsMap &_serverConns;	    //业务服务器Tcp连接
+	TcpConnsMap &_clientConns;		//客户端Tcp连接
+	string _business_code;		//业务编号
 };
 }//end of namespace wd
 

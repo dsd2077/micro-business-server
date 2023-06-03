@@ -97,7 +97,7 @@ namespace wd
 
 		addEpollReadFd(peerfd);
 		// 下面应该交给子线程进行处理
-		TcpConnectionPtr conn(new TcpConnection(peerfd, CLIENT));
+		TcpConnectionPtr conn(new TcpConnection(peerfd, CLIENT, _forwardingTable, _serverConns, _clientTable, _clientConns));
 		_clientConns.insert(std::make_pair(peerfd, conn));
 		// TODO:将下列语句改为日志记录
 		struct sockaddr_in addr;
@@ -107,6 +107,8 @@ namespace wd
 			perror("getsockname");
 		}
 		std::cout << "new connection come in , ip : " << string(inet_ntoa(addr.sin_addr)) << std::endl;
+		std::string ip_port = string(inet_ntoa(addr.sin_addr)) + ":" + std::to_string(ntohs(addr.sin_port));
+		_clientTable[ip_port] = peerfd;
 	}
 
 	void EventLoop::handleMessage(int fd)
@@ -130,7 +132,7 @@ namespace wd
 					int fd = connectToOneBusinessServer(upstream.first.c_str(), stoi(upstream.second));
 					_forwardingTable[location].push_back(fd);
 					addEpollReadFd(fd);
-					TcpConnectionPtr conn(new TcpConnection(fd, SERVER));
+					TcpConnectionPtr conn(new TcpConnection(fd, SERVER, _forwardingTable, _serverConns, _clientTable, _clientConns));
 					_serverConns.insert({fd, conn});
 					cout << "连接服务器 ip: " << upstream.first.c_str() << " port : "<< stoi(upstream.second) << " fd : " << fd << std::endl;
 				}

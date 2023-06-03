@@ -19,7 +19,7 @@ using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 
 class EventLoop
 {
-	using EventList = std::vector<struct epoll_event>;
+	using EventList = std::vector<struct epoll_event>;		//这两个类型定义为什么放在类之内，而TcpConnectionPtr放在类之外
 	using TcpConnsMap = std::map<int, TcpConnectionPtr>;
 public:
     //1 创建一个epoll句柄
@@ -50,10 +50,10 @@ private:
 	EventList   _evtList;   //
 	TcpConnsMap _clientConns;     //客户Tcp连接
 	TcpConnsMap _serverConns;	  //业务服务器Tcp连接
-	std::map<int, int> _belongs;	//不同的服务器所处理的商品类别。
     Threadpool _threadpool;
 	Parser _config;
-	std::map<std::string, std::vector<int>> _forwardingTable;		//转发表<业务编号，[服务器fd]>
+	std::map<std::string, int> _clientTable;						//server2client转发表<ip, fd>
+	std::map<std::string, std::vector<int>> _forwardingTable;		//client2server转发表<业务编号，[服务器fd]>
 };
 
 }//end of namespace wd

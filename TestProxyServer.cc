@@ -10,7 +10,8 @@ using namespace wd;
 
 void test0() 
 {
-    ProxyServer server("", "./proxyserver.conf", 10001);     //如果想要在公网上能够连接到该服务器，ip地址应该设置为公共IP地址
+    //TODO:这里不再设置ip和端口号，通过配置文件进行设置
+    ProxyServer server("", "../proxyserver.conf", 10001);     
     server.start();
 } 
 
