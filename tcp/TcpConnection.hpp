@@ -35,7 +35,7 @@ class TcpConnection
 {
 	using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 	using TcpConnsMap = map<int, TcpConnectionPtr>;
-	static const int READ_BUFFER_SIZE = 2048;	
+	static const int READ_BUFFER_SIZE = 8192;	
 
 public:
 	TcpConnection(int fd, CONNECTION_TYPE type,
@@ -50,6 +50,8 @@ public:
 	void do_server2client();
 	void do_client2server();
 	HTTP_CODE parse_request_line(string line);
+	HTTP_CODE parseRequest();
+	HTTP_CODE parseResponse();
 
 
 private:
@@ -62,7 +64,7 @@ private:
 	InetAddress _localAddr;     //本端的地址
 	InetAddress _peerAddr;      //对端的地址
 	bool _isShutdownWrite;      //是否写关闭
-	char _read_buf[READ_BUFFER_SIZE];
+	string _read_buf;
 	CONNECTION_TYPE _type;
 	map<string, vector<int>> &_forwardingTable;		//client2server转发表 <业务编号，[服务器fd]>
 	map<string, int> &_clientTable;						//server2client转发表 <ip:port, fd>

@@ -19,6 +19,7 @@ public:
 	//如果操作的成员函数不会对数据成员进行修改，都要设计成const成员函数
 	string ip() const;
 	unsigned short port() const;
+	string ip_port() const;
 
 	const struct sockaddr_in * getInetAddressPtr() const;
 

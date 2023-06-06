@@ -37,6 +37,12 @@ unsigned short InetAddress::port() const
 	return ntohs(_addr.sin_port);
 }
 
+string InetAddress::ip_port() const
+{
+	string ip_port = ip() + ":" + std::to_string(port());
+    return ip_port;
+}
+
 const struct sockaddr_in * InetAddress::getInetAddressPtr() const
 {
 	return &_addr;

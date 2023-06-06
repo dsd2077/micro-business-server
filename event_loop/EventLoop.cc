@@ -106,15 +106,20 @@ namespace wd
 		{
 			perror("getsockname");
 		}
-		std::cout << "new connection come in , ip : " << string(inet_ntoa(addr.sin_addr)) << std::endl;
 		std::string ip_port = string(inet_ntoa(addr.sin_addr)) + ":" + std::to_string(ntohs(addr.sin_port));
 		_clientTable[ip_port] = peerfd;
+		std::cout << "new connection come in , ip : " << ip_port << std::endl;
 	}
 
 	void EventLoop::handleMessage(int fd)
 	{
-		auto iter = _clientConns.find(fd);
-		_threadpool.addRequest(iter->second);
+		cout << "来消息了 fd = " << fd << endl;
+		if (_clientConns.find(fd) != _clientConns.end()) {
+			_threadpool.addRequest(_clientConns.find(fd)->second);
+		}
+		else if (_serverConns.find(fd) != _serverConns.end()) {
+			_threadpool.addRequest(_serverConns.find(fd)->second);
+		}
 	}
 
 	bool EventLoop::connectToBusinessServer()

@@ -1,5 +1,6 @@
 #include "TcpConnection.hpp"
 
+#include <string.h>
 #include <iostream>
 #include <sstream>
 #include <sstream>
@@ -58,38 +59,57 @@ void TcpConnection::process()
 
 void TcpConnection::do_server2client()
 {
-	// _sockIO.readn(_read_buf, sizeof(_read_buf));
-	// cout << "read message : \n" << _read_buf << endl;
-	//解析http请求，从中取出source字段
-	// string source;
-	// int fd = _clientTable[source];
-	// _clientConns[fd]->send(_read_buf);
+	if (!_sockIO.readn(_read_buf)) {
+		//TODO:读取出错，对端断开连接
+	}
+	//解析http请求，从中取出Client字段
+	int beg_pos = _read_buf.find("Client: ");
+	if (beg_pos == string::npos) return;
+	beg_pos += 8;
+	int end_pos = _read_buf.find_first_of('\n', beg_pos + 1);
+	if (end_pos == string::npos) return;
+	string client = _read_buf.substr(beg_pos, end_pos-beg_pos-1);
+
+	if (_clientTable.find(client) == _clientTable.end()) {
+		return;
+	}
+	int fd = _clientTable[client];
+	_clientConns[fd]->send(_read_buf);
+
+	_read_buf = "";
 }
 
 void TcpConnection::do_client2server()
 {
-	_sockIO.readn(_read_buf, sizeof(_read_buf));
+	if (!_sockIO.readn(_read_buf)) {
+		//对端已经关闭，关闭链接
+		cout << "对端断开链接" << endl;
+		_clientConns.erase(_sock.fd());
+		_clientTable.erase(_peerAddr.ip_port());
+		return;
+	}
 	//TDOO:解析消息——不需要完整的解析，只需要解析出请求行就可以了
-	// 在Header中添加source信息，即原ip和端口信息。业务服务器在响应请求时不修改source信息，
-	std::string ip_port = getPeerAddr().ip() + ":" + std::to_string(getPeerAddr().port());
-	cout << ip_port << endl;
-
+	// 在Header中添加Client信息，即原ip和端口信息。业务服务器在响应请求时不修改Client信息，
 	std::istringstream iss(_read_buf);
 	string line;
 	std::getline(iss, line);		//getline会从/n截断，所以会留下/r
 
 	if (parse_request_line(line) == BAD_REQUEST) {
 		//TODO:错误处理
+		return;
 	} 
 	//在消息中插入一个head字段 Client: ip:port
 	string new_message = _read_buf;
 	int header_pos = new_message.find_first_of("\n");
-	new_message.insert(header_pos+1, "Client: " + ip_port + "\r\n");
+	new_message.insert(header_pos+1, "Client: " + _peerAddr.ip_port() + "\r\n");
 	if (_forwardingTable.find(_business_code) == _forwardingTable.end() || _forwardingTable[_business_code].size() == 0) {
 		//TODO:错误处理
+		return;
 	}
 	int fd = _forwardingTable[_business_code].front();
 	_serverConns[fd]->send(new_message);
+
+	_read_buf = "";
 }
 
 HTTP_CODE TcpConnection::parse_request_line(string line)
