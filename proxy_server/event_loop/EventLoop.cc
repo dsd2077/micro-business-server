@@ -13,11 +13,10 @@
 
 namespace wd
 {
-	EventLoop::EventLoop(Acceptor &acceptor, const char *config_file, size_t threadNum, size_t queSize)
-		: _efd(createEpollfd()), _acceptor(acceptor), _isLooping(false), _evtList(1024), _threadpool(threadNum, queSize)
+	EventLoop::EventLoop(Acceptor &acceptor, Parser &config)
+    :_config(config),_efd(createEpollfd()), _acceptor(acceptor), _isLooping(false), _evtList(1024), _threadpool(_config.threadNum, _config.queSize)
 	{
 		addEpollReadFd(_acceptor.fd());
-		_config.parse(config_file);
 	}
 
 	EventLoop::~EventLoop()
@@ -124,28 +123,23 @@ namespace wd
 
 	bool EventLoop::connectToBusinessServer()
 	{
-		for (auto server : _config.servers)
-		{
-			for (const auto &loc : server.locations)
-			{
-				std::string location = loc.first;
-				_forwardingTable[location] = vector<int>();
-				std::string proxy_name = loc.second.proxy_pass.substr(7);		//截掉前面的http://
-				cout << "连接业务服务器" << proxy_name << endl;
-				for (const auto &upstream : _config.upstreams[proxy_name].servers)
-				{
-					int fd = connectToOneBusinessServer(upstream.first.c_str(), stoi(upstream.second));
-					_forwardingTable[location].push_back(fd);
-					addEpollReadFd(fd);
-					TcpConnectionPtr conn(new TcpConnection(fd, SERVER, _forwardingTable, _serverConns, _clientTable, _clientConns));
-					_serverConns.insert({fd, conn});
-					cout << "连接服务器 ip: " << upstream.first.c_str() << " port : "<< stoi(upstream.second) << " fd : " << fd << std::endl;
-				}
-				cout << endl;
-			}
-		}
-		return true;
-	}
+        for (const auto &loc : _config.server.locations) {
+            std::string location = loc.first;
+            _forwardingTable[location] = vector<int>();
+            std::string proxy_name = loc.second.proxy_pass.substr(7); // 截掉前面的http://
+            cout << "连接业务服务器" << proxy_name << endl;
+            for (const auto &upstream : _config.upstreams[proxy_name].servers) {
+                int fd = connectToOneBusinessServer(upstream.first.c_str(), stoi(upstream.second));
+                _forwardingTable[location].push_back(fd);
+                addEpollReadFd(fd);
+                TcpConnectionPtr conn(new TcpConnection(fd, SERVER, _forwardingTable, _serverConns, _clientTable, _clientConns));
+                _serverConns.insert({fd, conn});
+                cout << "连接服务器 ip: " << upstream.first.c_str() << " port : " << stoi(upstream.second) << " fd : " << fd << std::endl;
+            }
+            cout << endl;
+        }
+        return true;
+    }
 
 	int EventLoop::connectToOneBusinessServer(const char *ip, int port)
 	{

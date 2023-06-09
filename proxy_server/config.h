@@ -1,3 +1,6 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
 #include <iostream>
 #include <vector>
 #include <map>
@@ -26,7 +29,7 @@ struct Location {
 };
 
 struct Server {
-    std::string listen;
+    int listen;
     std::string server_name;
     std::map<std::string, Location> locations;
 };
@@ -41,8 +44,8 @@ private:
     string curLocation;
     string curUpstream;
 
-    CONFIG_CODE check_state = BEGAIN;
-    LINE_STATUS line_state = LINE_OK;
+    CONFIG_CODE check_state = CONFIG_CODE::BEGAIN;
+    LINE_STATUS line_state = LINE_STATUS::LINE_OK;
 
     bool server_left_bracket = false;
     bool location_left_bracket = false;
@@ -50,8 +53,11 @@ private:
 
 
 public:
-    std::vector<Server> servers;  //可能有多个server
+    Server server;  //可能有多个server
     std::map<std::string, Upstream> upstreams;  //可能有多个代理服务器
+    int threadNum;
+    int queSize;
+
 
     void parse(const std::string &filename) {
 
@@ -70,15 +76,24 @@ public:
             {
                 istringstream iss(line);
                 iss >> word;
-                if (word == "server")
+                if (word == "threadNum") {
+                    iss >> word;
+                    threadNum = std::stoi(word);
+                    break;
+                }
+                else if (word == "queSize") {
+                    iss >> word;
+                    queSize = std::stoi(word);
+                    break;
+                }
+                else if (word == "server")
                 {
-                    check_state = SERVER;
-                    servers.emplace_back(Server());
+                    check_state = CONFIG_CODE::SERVER;
                     parse_bracket(iss, server_left_bracket);
                     break;
                 }
                 else if (word == "upstream") {
-                    check_state = UPSTREAM;
+                    check_state = CONFIG_CODE::UPSTREAM;
                     Upstream stream = Upstream();
                     iss >> stream.name;
                     curUpstream = stream.name;
@@ -91,7 +106,7 @@ public:
                     return;
                 }
             }
-            case SERVER:
+            case CONFIG_CODE::SERVER:
             {
                 line_state = parse_server(line);
                 break;
@@ -109,7 +124,7 @@ public:
             }
         }
         if (line_state != LINE_OK || check_state != BEGAIN) {
-            check_state = BEGAIN;
+            check_state = CONFIG_CODE::BEGAIN;
             throw std::runtime_error("Unexpected end of configuration file");
         }
 
@@ -127,10 +142,10 @@ private:
             }
             else
             {
-                return LINE_BAD;
+                return LINE_STATUS::LINE_BAD;
             }
         }
-        return LINE_OK;
+        return LINE_STATUS::LINE_OK;
     }
 
     LINE_STATUS parse_server(std::string &line) {
@@ -144,33 +159,34 @@ private:
                 }
                 else {
                     throw std::runtime_error("Expected '{' after 'server' ");
-                    return LINE_BAD;
+                    return LINE_STATUS::LINE_BAD;
                 }
             }
             else if (word == "server_name") {
-                iss >> this->servers.back().server_name;
+                iss >> this->server.server_name;
             }
             else if (word == "listen") {
-                iss >> this->servers.back().listen;
+                iss >> word;
+                server.listen = std::stoi(word);
             }
             else if (word == "location") {
-                check_state = LOCATION;
+                check_state = CONFIG_CODE::LOCATION;
                 Location loc = Location();
                 iss >> loc.id;
                 curLocation = loc.id;
-                this->servers.back().locations.insert({curLocation, loc});
+                this->server.locations.insert({curLocation, loc});
                 parse_bracket(iss, location_left_bracket);
                 break;
             }
             else if (word == "}") {
                 server_left_bracket = false;
-                check_state = BEGAIN;
+                check_state = CONFIG_CODE::BEGAIN;
             }
             else {
-                return LINE_BAD;
+                return LINE_STATUS::LINE_BAD;
             }
         }
-        return LINE_OK;
+        return LINE_STATUS::LINE_OK;
     }
 
     LINE_STATUS parse_location(std::string &line) {
@@ -182,21 +198,21 @@ private:
                     location_left_bracket = true;
                 } else {
                     throw std::runtime_error("Expected '{' after 'location' name");
-                    return LINE_BAD;
+                    return LINE_STATUS::LINE_BAD;
                 }
             }
             else if (word == "proxy_pass") {
-                iss >> servers.back().locations[curLocation].proxy_pass;
+                iss >> server.locations[curLocation].proxy_pass;
             }
             else if (word == "}") {
                 location_left_bracket = false;
-                check_state = SERVER;
+                check_state = CONFIG_CODE::SERVER;
             }
             else {
-                return LINE_BAD;
+                return LINE_STATUS::LINE_BAD;
             }
         }
-        return LINE_OK;
+        return LINE_STATUS::LINE_OK;
     }
 
     LINE_STATUS parse_upstream(std::string &line) {
@@ -213,7 +229,7 @@ private:
                 else
                 {
                     throw std::runtime_error("Expected '{' after 'upstream' name");
-                    return LINE_BAD;
+                    return LINE_STATUS::LINE_BAD;
                 }
             }
             else if (word == "server")
@@ -221,7 +237,7 @@ private:
                 string ip_port;
                 iss >> ip_port;
                 size_t pos = ip_port.find_first_of(':');
-                if (pos == string::npos) return LINE_BAD;
+                if (pos == string::npos) return LINE_STATUS::LINE_BAD;
                 string ip = ip_port.substr(0, pos);
                 string port = ip_port.substr(pos+1);
                 upstreams[curUpstream].servers.push_back({ip, port});
@@ -229,16 +245,14 @@ private:
             else if (word == "}")
             {
                 upstream_left_bracket = false;
-                check_state = BEGAIN;
+                check_state = CONFIG_CODE::BEGAIN;
             }
             else
             {
-                return LINE_BAD;
+                return LINE_STATUS::LINE_BAD;
             }
         }
-        return LINE_OK;
-
-
+        return LINE_STATUS::LINE_OK;
     }
 
 private:
@@ -255,4 +269,4 @@ private:
         return str.substr(first, last - first + 1);
     }
 };
-
+#endif

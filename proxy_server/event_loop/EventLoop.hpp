@@ -24,7 +24,7 @@ class EventLoop
 public:
     //1 创建一个epoll句柄
     //2 将listenfd添加入监听事件
-	EventLoop(Acceptor &,const char * config_file, size_t threadNum = 8, size_t queSize=1024);
+	EventLoop(Acceptor &,Parser &config);
 	~EventLoop();
 
     //调用waitEpollfd去开启epoll监听
@@ -44,6 +44,7 @@ private:
 	int setnonblock(int fd);
 
 private:
+	Parser &_config;
 	int         _efd;   //epoll 监听套接字
 	Acceptor &  _acceptor;
 	bool        _isLooping;
@@ -51,7 +52,6 @@ private:
 	TcpConnsMap _clientConns;     //客户Tcp连接
 	TcpConnsMap _serverConns;	  //业务服务器Tcp连接
     Threadpool _threadpool;
-	Parser _config;
 	std::map<std::string, int> _clientTable;						//server2client转发表<ip, fd>
 	std::map<std::string, std::vector<int>> _forwardingTable;		//client2server转发表<业务编号，[服务器fd]>
 };

@@ -5,9 +5,9 @@
 namespace wd
 {
 
-Acceptor::Acceptor(const string & ip, unsigned short port)
+Acceptor::Acceptor(unsigned short port)
 : _listensock()
-, _serverAddr(ip, port)
+, _serverAddr("0.0.0.0", port)
 {}
 
 void Acceptor::ready()

@@ -12,7 +12,7 @@ namespace wd
 class Acceptor
 {
 public:
-	Acceptor(const string & ip, unsigned short port);
+	Acceptor(unsigned short port);
 
 	void ready();
 	int accept();

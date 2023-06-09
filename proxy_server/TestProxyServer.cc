@@ -1,5 +1,6 @@
 #include "ProxyServer.hpp"
 #include "./threadpool/Threadpool.hpp"
+#include "config.h"
 
 #include <iostream>
 #include <sstream>
@@ -10,8 +11,9 @@ using namespace wd;
 
 void test0() 
 {
-    //TODO:这里不再设置ip和端口号，通过配置文件进行设置
-    ProxyServer server("", "../proxyserver.conf", 10001);     
+    Parser parser;
+    parser.parse("../proxyserver.conf");
+    ProxyServer server(parser);     
     server.start();
 } 
 
