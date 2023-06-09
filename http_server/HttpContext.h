@@ -13,7 +13,7 @@
 
 #include "muduo/base/copyable.h"
 
-#include "muduo/net/http/HttpRequest.h"
+#include "./HttpRequest.h"
 
 namespace muduo
 {

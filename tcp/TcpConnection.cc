@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <sstream>
+#include <algorithm>
 using std::cout;
 using std::endl;
 using std::ostringstream;
@@ -49,19 +50,21 @@ void TcpConnection::process()
 	else if(_type == CLIENT) {
 		do_client2server();
 	}
-	//根据商品的类别信息转发消息
-	//解析出商品category
-	//现在在子线程中，
-	//方案一：获取到业务服务器的链接，在这里发送消息
-	//方案二：通知将业务服务器的fd设置为EPOLLOUT，不在这里发送消息（读写分离）
-	//方案三：从配置中控制转发
 }
 
 void TcpConnection::do_server2client()
 {
 	if (!_sockIO.readn(_read_buf)) {
-		//TODO:读取出错，对端断开连接
+		cout << "服务器断开链接" << endl;
+		_serverConns.erase(_sock.fd());
+		for (auto &pair : _forwardingTable) {
+			auto pos = std::find(pair.second.begin(), pair.second.end(), _sock.fd());
+			if (pos != pair.second.end()) {
+				pair.second.erase(pos);
+			}
+		}
 	}
+    cout << "message : " << endl << _read_buf << endl;
 	//解析http请求，从中取出Client字段
 	int beg_pos = _read_buf.find("Client: ");
 	if (beg_pos == string::npos) return;
@@ -88,7 +91,6 @@ void TcpConnection::do_client2server()
 		_clientTable.erase(_peerAddr.ip_port());
 		return;
 	}
-	//TDOO:解析消息——不需要完整的解析，只需要解析出请求行就可以了
 	// 在Header中添加Client信息，即原ip和端口信息。业务服务器在响应请求时不修改Client信息，
 	std::istringstream iss(_read_buf);
 	string line;

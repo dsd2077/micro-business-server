@@ -18,6 +18,9 @@
 #include <map>
 #include <assert.h>
 #include <stdio.h>
+#include <iostream>
+using std::cout;
+using std::endl;
 
 namespace muduo
 {
@@ -121,6 +124,32 @@ class HttpRequest : public muduo::copyable
   void setQuery(const char* start, const char* end)
   {
     query_.assign(start, end);
+    parse_query();
+  }
+
+  void parse_query() {
+    int beg = 0;
+    int end;
+    string key, value;
+    beg += 1;   //去掉？
+    while (beg < query_.size()) {
+        // find key
+        end = query_.find_first_of("=", beg);
+        if (end == string::npos)  break;
+
+        key = query_.substr(beg, end-beg);
+        //find value
+        beg = end + 1;
+        end = query_.find_first_of("&", beg);
+        if (end == string::npos) {
+            value = query_.substr(beg);
+            querys_[key] = value;
+            break;
+        } 
+        value = query_.substr(beg, end-beg);
+        querys_[key] = value;
+        beg = end + 1;
+    }
   }
 
   const string& query() const
@@ -146,6 +175,17 @@ class HttpRequest : public muduo::copyable
       value.resize(value.size()-1);
     }
     headers_[field] = value;
+  }
+
+  string getQuery(const string& field) const
+  {
+    string result;
+    std::map<string, string>::const_iterator it = querys_.find(field);
+    if (it != headers_.end())
+    {
+      result = it->second;
+    }
+    return result;
   }
 
   string getHeader(const string& field) const
@@ -179,6 +219,7 @@ class HttpRequest : public muduo::copyable
   string query_;
   Timestamp receiveTime_;
   std::map<string, string> headers_;
+  std::map<string, string> querys_;
 };
 
 }  // namespace net

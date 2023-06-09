@@ -35,7 +35,6 @@ class TcpConnection
 {
 	using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 	using TcpConnsMap = map<int, TcpConnectionPtr>;
-	static const int READ_BUFFER_SIZE = 8192;	
 
 public:
 	TcpConnection(int fd, CONNECTION_TYPE type,
@@ -59,18 +58,18 @@ private:
 	InetAddress getPeerAddr();
 
 private:
-	Socket _sock;       //对端的socket
-	SocketIO _sockIO;   //封装读写操作的类
+	Socket _sock;       		//对端的socket
+	SocketIO _sockIO;   		//封装读写操作的类
 	InetAddress _localAddr;     //本端的地址
 	InetAddress _peerAddr;      //对端的地址
 	bool _isShutdownWrite;      //是否写关闭
-	string _read_buf;
-	CONNECTION_TYPE _type;
-	map<string, vector<int>> &_forwardingTable;		//client2server转发表 <业务编号，[服务器fd]>
+	string _read_buf;			//消息缓冲区
+	CONNECTION_TYPE _type;		//连接类型,client or server
+	map<string, vector<int>> &_forwardingTable;			//client2server转发表 <业务编号，[服务器fd]>
 	map<string, int> &_clientTable;						//server2client转发表 <ip:port, fd>
 	TcpConnsMap &_serverConns;	    //业务服务器Tcp连接
 	TcpConnsMap &_clientConns;		//客户端Tcp连接
-	string _business_code;		//业务编号
+	string _business_code;			//业务编号
 };
 }//end of namespace wd
 

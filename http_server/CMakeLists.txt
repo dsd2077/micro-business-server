@@ -3,5 +3,5 @@ project(httpserver)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(httpserver_test HttpServer_test.cc)
-target_link_libraries(httpserver_test muduo_http muduo_net muduo_base mysqlclient jsoncpp)
+add_executable(server1 server1.cc HttpServer.cc HttpResponse.cc HttpContext.cc sql_connection_pool.cpp)
+target_link_libraries(server1 muduo_net muduo_base mysqlclient jsoncpp)
