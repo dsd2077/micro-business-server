@@ -9,7 +9,6 @@
 #include <iostream>
 #include <string>
 #include <mutex>
-#include <semaphore>
 #include "sem.h"
 
 using namespace std;

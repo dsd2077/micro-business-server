@@ -97,15 +97,22 @@ void TcpConnection::do_client2server()
 	std::getline(iss, line);		//getline会从/n截断，所以会留下/r
 
 	if (parse_request_line(line) == BAD_REQUEST) {
-		//TODO:错误处理
+        Json::Value data;
+        data["code"] = 404;
+        data["message"] = "404 Not Found";
+        error_handle(HttpStatusCode::NotFound, "404 Not Found", data);
 		return;
 	} 
+
 	//在消息中插入一个head字段 Client: ip:port
 	string new_message = _read_buf;
 	int header_pos = new_message.find_first_of("\n");
 	new_message.insert(header_pos+1, "Client: " + _peerAddr.ip_port() + "\r\n");
-	if (_forwardingTable.find(_business_code) == _forwardingTable.end() || _forwardingTable[_business_code].size() == 0) {
-		//TODO:错误处理
+	if (_forwardingTable[_business_code].size() == 0) {
+        Json::Value data;
+        data["code"] = 404;
+        data["message"] = "404 Not Found";
+        error_handle(HttpStatusCode::NotFound, "404 Not Found", data);
 		return;
 	}
 	int fd = _forwardingTable[_business_code].front();
@@ -129,12 +136,10 @@ HTTP_CODE TcpConnection::parse_request_line(string line)
 	if (blank_pos2 == blank_pos1) {
 		return BAD_REQUEST;
 	}
-	string path = line.substr(blank_pos1+1, blank_pos2-blank_pos1-1);
-	//这里要将业务代码截出来，如果不存在该业务就将其设置BAD_REQUEST
-	_business_code = path.substr(0, path.find_first_of('/', 1)+1);
-	if (_forwardingTable.find(_business_code) == _forwardingTable.end()) {
+	_path = line.substr(blank_pos1+1, blank_pos2-blank_pos1-1);
+    if (!find_forward_path()) {
 		return BAD_REQUEST;
-	}
+    }
 	
 	string protocol = line.substr(blank_pos2 + 1);
 	if (protocol != "HTTP/1.1" && protocol != "HTTP/1.0") {
@@ -174,5 +179,44 @@ InetAddress TcpConnection::getPeerAddr()
 	return InetAddress(addr);
 }
 
+bool TcpConnection::find_forward_path()
+{
+    int pos = _path.size()-1;
+    while (pos > 0) {
+        if (_forwardingTable.find(_path.substr(0, pos+1)) != _forwardingTable.end()) {
+            _business_code = _path.substr(0, pos+1);
+            return true;
+        }
+        if (_path[pos] == '/') {
+            pos -= 1;
+        } else {
+            pos = _path.find_last_of('/', pos);
+        }
+    }
+
+    return false;
+}
+
+void TcpConnection::error_handle(HttpStatusCode code, const string message, Json::Value data)
+{
+    string buffer;
+    Json::StreamWriterBuilder writerBuilder;
+    std::string body = Json::writeString(writerBuilder, data);  // 将 Value 对象转换为字符串
+    char buf[32];
+    snprintf(buf, sizeof buf, "HTTP/1.1 %d ", code);
+    buffer += buf;
+    buffer += message;
+    buffer += "\r\n";
+
+    //添加头部信息
+    buffer += "Connection: close\r\n";
+    snprintf(buf, sizeof buf, "Content-Length: %zd\r\n", body.size());
+    buffer += buf;
+    buffer += "Content-Type: application/json\r\n";
+
+    buffer += "\r\n";
+    buffer += body;
+    _sockIO.writen(buffer.c_str(), buffer.size());
+}
 
 }//end of namespace wd

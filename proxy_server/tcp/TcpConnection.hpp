@@ -11,6 +11,7 @@
 #include <functional>
 #include <map>
 #include <vector>
+#include <jsoncpp/json/json.h>
 
 using std::string;
 using std::map;
@@ -22,6 +23,15 @@ namespace wd
 enum HTTP_CODE {
 	BAD_REQUEST,
 	GET_REQUEST,
+};
+
+enum HttpStatusCode
+{
+    Unknown,
+    Ok = 200,
+    MovedPermanently = 301,
+    BadRequest = 400,
+    NotFound = 404,
 };
 
 enum CONNECTION_TYPE {
@@ -49,13 +59,13 @@ public:
 	void do_server2client();
 	void do_client2server();
 	HTTP_CODE parse_request_line(string line);
-	HTTP_CODE parseRequest();
-	HTTP_CODE parseResponse();
 
 
 private:
 	InetAddress getLocalAddr();
 	InetAddress getPeerAddr();
+    bool find_forward_path();
+    void error_handle(HttpStatusCode code, const string message, Json::Value data);
 
 private:
 	Socket _sock;       		//对端的socket
@@ -69,6 +79,9 @@ private:
 	map<string, int> &_clientTable;						//server2client转发表 <ip:port, fd>
 	TcpConnsMap &_serverConns;	    //业务服务器Tcp连接
 	TcpConnsMap &_clientConns;		//客户端Tcp连接
+
+    //http protocol related variable
+    string _path;               //http path
 	string _business_code;			//业务编号
 };
 }//end of namespace wd

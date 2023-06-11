@@ -25,6 +25,7 @@ const char *database = "commodity";
 
 connection_pool * sql_conn_pool;        //数据库连接池
 mutex conn_mutex;                       //用于操作数据库时加锁
+sem conn_sem;
 
 class Task
 {
@@ -36,12 +37,11 @@ public:
         for (const auto &header : headers) {
             std::cout << header.first << ": " << header.second << std::endl;
         }
-        if (req.path() == "/10001/buy/") {
+        if (req.path() == "/10002/buy/") {
             do_buy(req, resp);
-        } else if (req.path() == "/10001/show/") {
+        } else if (req.path() == "/10002/show/") {
             do_show(req, resp);
-        } 
-        else {
+        } else {
             error_handle(resp, HttpResponse::k400BadRequest, "Not Found!", req.getHeader("Client"));
         }
     }   
@@ -56,39 +56,44 @@ public:
         if (num == "")
             return;
         MYSQL * conn;
+        MYSQL_RES *result;
+        MYSQL_ROW row;
         connectionRAII(&conn, sql_conn_pool);
 
-        lock_guard<mutex> guard(conn_mutex);
-        string query = "SELECT * FROM cosmetics WHERE id=" + id;
-        if (mysql_query(conn, query.c_str())) {         //我们的问题
-            cout << "查询数据库失败: " << mysql_error(conn) << endl;
-            error_handle(resp, HttpResponse::kUnknown, "网络出错", req.getHeader("Client"));
-            return;
-        }
-        MYSQL_RES *result = mysql_store_result(conn); // 数据库出错,我们的问题
-        if (!result) {
-            cout << "获取查询结果失败: " << mysql_error(conn) << endl;
-            error_handle(resp, HttpResponse::kUnknown, "网络出错", req.getHeader("Client"));
-            return;
-        }
-        MYSQL_ROW row = mysql_fetch_row(result);
-        if (row == NULL) {                              //有可能是客户的问题,有可能是链接失效了，有可能是商品下架了
-            cout << "该商品不存在" << endl;
-            error_handle(resp, HttpResponse::k400BadRequest, "未找到商品", req.getHeader("Client"));
-            return;
-        }
-        int stock = atoi(row[2]); // 假设第三列是库存量
-        if (stoi(num) > stock) {
-            cout << "商品数量不足" << endl;
-            error_handle(resp, HttpResponse::k400BadRequest, "商品数量不足", req.getHeader("Client"));
-            return;
-        }
-        query = "UPDATE cosmetics SET num=num-" + num + " WHERE id=" + id;
-        if (mysql_query(conn, query.c_str())) // mysql服务器的问题
+        //下面为数据库操作，需要进行加锁操作，将其放在一个作用域中
         {
-            cout << "更新数据库失败: " << mysql_error(conn) << endl;
-            error_handle(resp, HttpResponse::kUnknown, "网络出错", req.getHeader("Client"));
-            return;
+            lock_guard<mutex> guard(conn_mutex);
+            string query = "SELECT * FROM wines WHERE id=" + id;
+            if (mysql_query(conn, query.c_str())) { // 我们的问题
+                cout << "查询数据库失败: " << mysql_error(conn) << endl;
+                error_handle(resp, HttpResponse::kUnknown, "网络出错", req.getHeader("Client"));
+                return;
+            }
+            result = mysql_store_result(conn); // 数据库出错,我们的问题
+            if (!result) {
+                cout << "获取查询结果失败: " << mysql_error(conn) << endl;
+                error_handle(resp, HttpResponse::kUnknown, "网络出错", req.getHeader("Client"));
+                return;
+            }
+            row = mysql_fetch_row(result);
+            if (row == NULL) { // 有可能是客户的问题,有可能是链接失效了，有可能是商品下架了
+                cout << "该商品不存在" << endl;
+                error_handle(resp, HttpResponse::k400BadRequest, "未找到商品", req.getHeader("Client"));
+                return;
+            }
+            int stock = atoi(row[2]); // 假设第三列是库存量
+            if (stoi(num) > stock) {
+                cout << "商品数量不足" << endl;
+                error_handle(resp, HttpResponse::k400BadRequest, "商品数量不足", req.getHeader("Client"));
+                return;
+            }
+            query = "UPDATE wines SET num=num-" + num + " WHERE id=" + id;
+            if (mysql_query(conn, query.c_str())) // mysql服务器的问题
+            {
+                cout << "更新数据库失败: " << mysql_error(conn) << endl;
+                error_handle(resp, HttpResponse::kUnknown, "网络出错", req.getHeader("Client"));
+                return;
+            }
         }
 
         Json::Value item;
@@ -120,7 +125,7 @@ public:
         resp->setStatusCode(code);
         resp->setStatusMessage(message);
         resp->addHeader("Client", client);
-        resp->setContentType("text/plain;charset=UTF-8");
+        resp->setContentType("application/json");
         Json::Value data;
         data["code"] = code;
         data["message"] = message;
@@ -132,7 +137,7 @@ public:
     void do_show(const HttpRequest &req, HttpResponse *resp)
     {
         // 查询数据库
-        const char *sql_query = "select * from cosmetics";
+        const char *sql_query = "select * from wines";
         MYSQL * conn;
         connectionRAII(&conn, sql_conn_pool);
         if (mysql_query(conn, sql_query)) {
@@ -171,10 +176,10 @@ public:
 int main(int argc, char *argv[])
 {
     Config config;
-    config.parse_arg(argc, argv);
+    config.parse_arg(argc, argv); 
 
     EventLoop loop;
-    HttpServer server(&loop, InetAddress(config.PORT), "server1");
+    HttpServer server(&loop, InetAddress(config.PORT), "server2");
     Task t;
     server.setHttpCallback(std::bind(&Task::onRequest, t, _1, _2));
 
@@ -182,6 +187,7 @@ int main(int argc, char *argv[])
 
     sql_conn_pool = connection_pool::GetInstance();
     sql_conn_pool->init("localhost", username, password, database, 3306, config.sql_num);
+    
 
     server.start();
     loop.loop();
